@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CPU Scheduler Simulator | Vaishnavi Satone & Bhavishka Paunikar</title>
+    <meta name="description" content="Interactive CPU Scheduling Simulator with real-time Gantt Chart, Queue Visualizations, FCFS, SJF, Round Robin, and Priority algorithms.">
+    <!-- Google Fonts: Inter & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Top Navigation Bar -->
+        <header class="app-header">
+            <div class="header-left">
+                <div class="logo-badge">
+                    <span class="cpu-icon">⚡</span>
+                </div>
+                <div>
+                    <h1 class="app-title">CPU Scheduler Simulator</h1>
+                    <p class="app-subtitle">Interactive OS Process Scheduling & Live Animation</p>
+                </div>
+            </div>
+            <div class="header-right">
+                <div class="author-pill">
+                    <span class="author-dot"></span>
+                    <span>Developers: <strong>Vaishnavi Satone</strong> & <strong>Bhavishka Paunikar</strong></span>
+                </div>
+                <div class="header-actions">
+                    <button id="soundToggleBtn" class="icon-btn" title="Toggle Sound">🔊</button>
+                    <button id="themeToggleBtn" class="icon-btn" title="Toggle Theme">🌙</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Control Bar -->
+        <section class="control-section" aria-label="Simulation Controls">
+            <div class="control-group">
+                <label for="algorithmSelect">Algorithm</label>
+                <select id="algorithmSelect" class="styled-select">
+                    <option value="FCFS">FCFS (First Come First Served)</option>
+                    <option value="SJF">SJF (Shortest Job First - Non-Preemptive)</option>
+                    <option value="SRTF">SRTF (Shortest Remaining Time First)</option>
+                    <option value="RR" selected>Round Robin (RR)</option>
+                    <option value="PRIORITY_PRE">Priority (Preemptive)</option>
+                    <option value="PRIORITY_NON">Priority (Non-Preemptive)</option>
+                </select>
+            </div>
+
+            <div class="control-group" id="quantumGroup">
+                <label for="quantumInput">Time Quantum (TQ)</label>
+                <div class="input-stepper">
+                    <button type="button" id="quantumMinus">-</button>
+                    <input type="number" id="quantumInput" value="2" min="1" max="20">
+                    <button type="button" id="quantumPlus">+</button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label for="speedSelect">Simulation Speed</label>
+                <div class="speed-pill-group">
+                    <button type="button" class="speed-pill" data-speed="0.5">0.5x</button>
+                    <button type="button" class="speed-pill active" data-speed="1">1x</button>
+                    <button type="button" class="speed-pill" data-speed="2">2x</button>
+                    <button type="button" class="speed-pill" data-speed="5">5x</button>
+                </div>
+            </div>
+
+            <div class="control-actions">
+                <button id="startBtn" class="btn btn-primary">
+                    <span class="btn-icon">▶</span> <span id="startBtnText">Start</span>
+                </button>
+                <button id="stepBtn" class="btn btn-secondary">
+                    <span class="btn-icon">⏭</span> Step
+                </button>
+                <button id="resetBtn" class="btn btn-danger">
+                    <span class="btn-icon">⟲</span> Reset
+                </button>
+            </div>
+
+            <div class="simulation-status-pill">
+                <span class="status-indicator" id="statusIndicator"></span>
+                <span id="statusText">Ready</span>
+                <span class="time-badge">Time: <strong id="simClock">0</strong> ms</span>
+            </div>
+        </section>
+
+        <!-- Main Workspace Grid -->
+        <main class="main-grid">
+            <!-- Left Side: Process Setup & Queues -->
+            <div class="left-column">
+                <!-- Process Table & Input -->
+                <section class="card process-setup-card">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <span class="card-icon">📋</span>
+                            <h2>Process Configuration</h2>
+                        </div>
+                        <div class="card-actions">
+                            <button id="loadSampleBtn" class="btn btn-sm btn-ghost">Reset Sample</button>
+                            <button id="randomizeBtn" class="btn btn-sm btn-ghost">Randomize</button>
+                            <button id="addProcessBtn" class="btn btn-sm btn-accent">+ Add Process</button>
+                        </div>
+                    </div>
+                    <div class="table-container">
+                        <table class="process-table" id="processTable">
+                            <thead>
+                                <tr>
+                                    <th>Process</th>
+                                    <th>Arrival Time (ms)</th>
+                                    <th>Burst Time (ms)</th>
+                                    <th>Priority</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="processTableBody">
+                                <!-- Dynamic rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- 4 Live Queue Visualizations -->
+                <section class="card queues-card">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <span class="card-icon">🔄</span>
+                            <h2>Real-time Queue Visualization</h2>
+                        </div>
+                    </div>
+
+                    <div class="queues-container">
+                        <!-- Ready Queue -->
+                        <div class="queue-lane">
+                            <div class="queue-header">
+                                <span class="queue-tag tag-ready">Ready Queue</span>
+                                <span class="queue-count" id="readyCount">0 processes</span>
+                            </div>
+                            <div class="queue-track" id="readyQueueTrack">
+                                <div class="empty-placeholder">Queue is empty</div>
+                            </div>
+                        </div>
+
+                        <!-- Active CPU Slot -->
+                        <div class="cpu-core-slot">
+                            <div class="cpu-header">
+                                <span class="cpu-pulse-indicator"></span>
+                                <span class="cpu-label">CPU CORE</span>
+                                <span class="cpu-load-badge" id="cpuStateText">IDLE</span>
+                            </div>
+                            <div class="cpu-stage" id="cpuStage">
+                                <div class="cpu-idle-graphic">
+                                    <div class="chip-graphic">CPU</div>
+                                    <span>Waiting for process...</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Waiting / IO Queue -->
+                        <div class="queue-lane">
+                            <div class="queue-header">
+                                <span class="queue-tag tag-waiting">Waiting Queue (I/O)</span>
+                                <span class="queue-count" id="waitingCount">0 processes</span>
+                            </div>
+                            <div class="queue-track" id="waitingQueueTrack">
+                                <div class="empty-placeholder">No waiting processes</div>
+                            </div>
+                        </div>
+
+                        <!-- Completed Queue -->
+                        <div class="queue-lane">
+                            <div class="queue-header">
+                                <span class="queue-tag tag-completed">Completed Queue</span>
+                                <span class="queue-count" id="completedCount">0 processes</span>
+                            </div>
+                            <div class="queue-track" id="completedQueueTrack">
+                                <div class="empty-placeholder">No completed processes yet</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Live Gantt Chart Section -->
+                <section class="card gantt-card">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <span class="card-icon">📊</span>
+                            <h2>Live Gantt Chart Timeline</h2>
+                        </div>
+                        <div class="gantt-legend" id="ganttLegend">
+                            <!-- Process Color Legend -->
+                        </div>
+                    </div>
+
+                    <div class="gantt-scroll-wrapper" id="ganttWrapper">
+                        <div class="gantt-canvas" id="ganttCanvas">
+                            <div class="gantt-timeline-blocks" id="ganttBlocks"></div>
+                            <div class="gantt-ticks" id="ganttTicks"></div>
+                            <div class="current-time-marker" id="currentTimeMarker"></div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Right Side: Performance Metrics & Event Logs -->
+            <div class="right-column">
+                <!-- Metrics Card -->
+                <section class="card metrics-card">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <span class="card-icon">📈</span>
+                            <h2>Performance Statistics</h2>
+                        </div>
+                    </div>
+
+                    <div class="metrics-grid">
+                        <div class="metric-box">
+                            <span class="metric-label">Avg. Waiting Time</span>
+                            <span class="metric-val" id="metricAvgWT">0.00 <small>ms</small></span>
+                            <span class="metric-sub">Across all processes</span>
+                        </div>
+                        <div class="metric-box">
+                            <span class="metric-label">Avg. Turnaround Time</span>
+                            <span class="metric-val" id="metricAvgTAT">0.00 <small>ms</small></span>
+                            <span class="metric-sub">Total time in system</span>
+                        </div>
+                        <div class="metric-box">
+                            <span class="metric-label">Avg. Response Time</span>
+                            <span class="metric-val" id="metricAvgRT">0.00 <small>ms</small></span>
+                            <span class="metric-sub">Time to first execution</span>
+                        </div>
+                        <div class="metric-box">
+                            <span class="metric-label">CPU Utilization</span>
+                            <span class="metric-val" id="metricCpuUtil">0.0 <small>%</small></span>
+                            <div class="utilization-bar">
+                                <div class="utilization-fill" id="utilizationFill"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Individual Process Results Table -->
+                    <div class="results-table-container">
+                        <table class="results-table" id="resultsTable">
+                            <thead>
+                                <tr>
+                                    <th>PID</th>
+                                    <th>AT</th>
+                                    <th>BT</th>
+                                    <th>CT</th>
+                                    <th>TAT</th>
+                                    <th>WT</th>
+                                    <th>RT</th>
+                                </tr>
+                            </thead>
+                            <tbody id="resultsTableBody">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Event Log Card -->
+                <section class="card event-log-card">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <span class="card-icon">📝</span>
+                            <h2>Execution Event Log</h2>
+                        </div>
+                        <button id="clearLogBtn" class="btn btn-xs btn-ghost">Clear</button>
+                    </div>
+                    <div class="event-log-container" id="eventLogContainer">
+                        <div class="log-entry log-entry-system">
+                            <span class="log-time">[00:00]</span>
+                            <span class="log-msg">Simulator initialized. Select algorithm and press Start.</span>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="app-footer">
+            <div class="footer-content">
+                <span>CPU Scheduler Simulator v2.0 • Designed & Built by <strong>VAISHNAVI SATONE</strong> & <strong>BHAVISHKA PAUNIKAR</strong></span>
+                <span class="desktop-hint">💡 Desktop JavaFX edition also available via <code>run.bat</code></span>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/scheduler.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
